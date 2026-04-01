@@ -1,5 +1,7 @@
 # axios-check
 
+**Current Version: v0.2.0**
+
 [axios サプライチェーン攻撃 (2026-03-31)](https://blog.flatt.tech/entry/axios_compromise) の感染有無チェック・バージョン確認スクリプトです。
 
 ## 背景
