@@ -31,13 +31,15 @@
 
 ### 使い方
 
+macOS / Linux:
+
 ```bash
-# macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/trapple/axios-check/main/check_axios_infection.sh | bash
 ```
 
+Windows (PowerShell):
+
 ```powershell
-# Windows (PowerShell)
 irm https://raw.githubusercontent.com/trapple/axios-check/main/check_axios_infection.ps1 | iex
 ```
 
@@ -53,19 +55,27 @@ irm https://raw.githubusercontent.com/trapple/axios-check/main/check_axios_infec
 
 ### 使い方
 
-```bash
-# macOS / Linux（デフォルトは $HOME 配下を検索）
-curl -fsSL https://raw.githubusercontent.com/trapple/axios-check/main/check_axios_version.sh | bash
+macOS / Linux（デフォルトは `$HOME` 配下を検索）:
 
-# 検索ディレクトリを指定
+```bash
+curl -fsSL https://raw.githubusercontent.com/trapple/axios-check/main/check_axios_version.sh | bash
+```
+
+検索ディレクトリを指定:
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/trapple/axios-check/main/check_axios_version.sh | bash -s /path/to/repos
 ```
 
-```powershell
-# Windows（デフォルトは %USERPROFILE% 配下を検索）
-irm https://raw.githubusercontent.com/trapple/axios-check/main/check_axios_version.ps1 | iex
+Windows（デフォルトは `%USERPROFILE%` 配下を検索）:
 
-# 検索ディレクトリを指定（ダウンロードして実行）
+```powershell
+irm https://raw.githubusercontent.com/trapple/axios-check/main/check_axios_version.ps1 | iex
+```
+
+検索ディレクトリを指定（ダウンロードして実行）:
+
+```powershell
 .\check_axios_version.ps1 -SearchRoot "D:\repos"
 ```
 
