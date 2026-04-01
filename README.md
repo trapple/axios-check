@@ -11,9 +11,9 @@
 | スクリプト | 用途 | バージョン |
 |---|---|---|
 | `check_axios_infection.sh` | 感染チェック (macOS / Linux) | v0.1.1 |
-| `check_axios_infection.ps1` | 感染チェック (Windows) | v0.1.1 |
+| `check_axios_infection.ps1` | 感染チェック (Windows) | v0.1.2 |
 | `check_axios_version.sh` | axios バージョン確認 (macOS / Linux) | v0.2.0 |
-| `check_axios_version.ps1` | axios バージョン確認 (Windows) | v0.2.0 |
+| `check_axios_version.ps1` | axios バージョン確認 (Windows) | v0.2.1 |
 
 ## 1. 感染チェック (`check_axios_infection`)
 

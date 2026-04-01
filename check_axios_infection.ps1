@@ -1,7 +1,7 @@
 ﻿# axios サプライチェーン攻撃 感染チェックスクリプト (Windows / PowerShell)
 # 参考: https://blog.flatt.tech/entry/axios_compromise
 
-$Version = "0.1.1"
+$Version = "0.1.2"
 $infected = $false
 
 Write-Host "========================================"
