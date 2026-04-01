@@ -1,7 +1,5 @@
 # axios-check
 
-**Current Version: v0.2.0**
-
 [axios サプライチェーン攻撃 (2026-03-31)](https://blog.flatt.tech/entry/axios_compromise) の感染有無チェック・バージョン確認スクリプトです。
 
 ## 背景
@@ -10,12 +8,12 @@
 
 ## スクリプト一覧
 
-| スクリプト | 用途 |
-|---|---|
-| `check_axios_infection.sh` | 感染チェック (macOS / Linux) |
-| `check_axios_infection.ps1` | 感染チェック (Windows) |
-| `check_axios_version.sh` | axios バージョン確認 (macOS / Linux) |
-| `check_axios_version.ps1` | axios バージョン確認 (Windows) |
+| スクリプト | 用途 | バージョン |
+|---|---|---|
+| `check_axios_infection.sh` | 感染チェック (macOS / Linux) | v0.1.1 |
+| `check_axios_infection.ps1` | 感染チェック (Windows) | v0.1.1 |
+| `check_axios_version.sh` | axios バージョン確認 (macOS / Linux) | v0.2.0 |
+| `check_axios_version.ps1` | axios バージョン確認 (Windows) | v0.2.0 |
 
 ## 1. 感染チェック (`check_axios_infection`)
 
