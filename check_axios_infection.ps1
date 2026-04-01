@@ -1,4 +1,4 @@
-# axios サプライチェーン攻撃 感染チェックスクリプト (Windows / PowerShell)
+﻿# axios サプライチェーン攻撃 感染チェックスクリプト (Windows / PowerShell)
 # 参考: https://blog.flatt.tech/entry/axios_compromise
 
 $Version = "0.1.1"

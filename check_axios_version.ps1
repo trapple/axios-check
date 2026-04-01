@@ -1,4 +1,4 @@
-# axios バージョンチェックスクリプト (Windows / PowerShell)
+﻿# axios バージョンチェックスクリプト (Windows / PowerShell)
 # ローカルリポジトリとグローバルnpmパッケージから axios の利用状況を検出する
 # 参考: https://blog.flatt.tech/entry/axios_compromise
 
