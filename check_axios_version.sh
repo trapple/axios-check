@@ -11,10 +11,11 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-VERSION="0.1.1"
+VERSION="0.2.0"
 BAD_VERSIONS=("1.14.1" "0.30.4")
 found_count=0
 danger_count=0
+unpinned_count=0
 
 # 検索ルートディレクトリ（引数があればそれを使用、なければ $HOME）
 search_root="${1:-$HOME}"
@@ -35,6 +36,19 @@ is_bad_version() {
     return 1
 }
 
+is_unpinned() {
+    local ver="$1"
+    case "$ver" in
+        ^*|~*|\>*|\<*|*x*|*\**) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# バージョン指定からプレフィックスを除去して純粋なバージョンを取得
+strip_version_prefix() {
+    echo "$1" | sed 's/^[^0-9]*//'
+}
+
 print_result() {
     local location="$1"
     local version="$2"
@@ -42,10 +56,34 @@ print_result() {
     local suffix="${4:-}"
 
     found_count=$((found_count + 1))
-    local display_version="${version}${suffix}"
-    if is_bad_version "$version"; then
+
+    # バージョン固定チェック（package.json 定義のみが対象）
+    local pinned_warn=""
+    if is_unpinned "$version"; then
+        unpinned_count=$((unpinned_count + 1))
+        pinned_warn="・未固定"
+    fi
+
+    local display_version="${version}${suffix:+${suffix}}${pinned_warn:+ (${pinned_warn##・})}"
+    # suffix と pinned_warn を統合表示
+    if [ -n "$suffix" ] && [ -n "$pinned_warn" ]; then
+        display_version="${version} (定義のみ・未固定)"
+    elif [ -n "$suffix" ]; then
+        display_version="${version}${suffix}"
+    elif [ -n "$pinned_warn" ]; then
+        display_version="${version} (未固定)"
+    else
+        display_version="${version}"
+    fi
+
+    local bare_version
+    bare_version=$(strip_version_prefix "$version")
+
+    if is_bad_version "$bare_version"; then
         danger_count=$((danger_count + 1))
         echo -e "  ${RED}[危険]${NC} axios@${RED}${display_version}${NC}"
+    elif [ -n "$pinned_warn" ]; then
+        echo -e "  ${YELLOW}[注意]${NC} axios@${YELLOW}${display_version}${NC}"
     else
         echo -e "  ${GREEN}[安全]${NC} axios@${display_version}"
     fi
@@ -131,6 +169,19 @@ while IFS= read -r -d '' lockfile; do
     if [ -n "$dep_version" ]; then
         print_result "$project_dir" "$dep_version" "package.json" " (定義のみ)"
     fi
+
+    # node_modules がある場合でも package.json のバージョン固定状況を確認
+    if [ -n "$version" ]; then
+        pkg_json="$project_dir/package.json"
+        dep_spec=$(grep -o '"axios"[[:space:]]*:[[:space:]]*"[^"]*"' "$pkg_json" 2>/dev/null | head -1 | grep -o '"[^"]*"$' | tr -d '"' || true)
+        if [ -n "$dep_spec" ] && is_unpinned "$dep_spec"; then
+            unpinned_count=$((unpinned_count + 1))
+            echo -e "  ${YELLOW}[注意]${NC} axios@${YELLOW}${dep_spec} (未固定)${NC}"
+            echo "        場所: ${project_dir}"
+            echo "        検出: package.json"
+            echo ""
+        fi
+    fi
 done < <(find "$search_root" \
     -maxdepth 5 \
     \( -name "node_modules" -o -name ".cache" -o -name "Library" \) -prune -o \
@@ -148,6 +199,7 @@ echo ""
 echo "========================================"
 echo "  検索リポジトリ数: ${repo_count}"
 echo "  axios 検出数:     ${found_count}"
+echo "  未固定バージョン: ${unpinned_count} 件"
 
 if [ "$danger_count" -gt 0 ]; then
     echo ""
@@ -156,6 +208,11 @@ if [ "$danger_count" -gt 0 ]; then
     echo -e "  ${RED}悪性バージョン (${BAD_VERSIONS[*]}) が検出されました！${NC}"
     echo "  直ちに安全なバージョンへダウングレードしてください:"
     echo "    npm install axios@1.14.0"
+elif [ "$unpinned_count" -gt 0 ]; then
+    echo ""
+    echo -e "  ${YELLOW}未固定のバージョン指定が ${unpinned_count} 件あります${NC}"
+    echo "  バージョンを固定することを推奨します:"
+    echo "    npm install axios@1.14.0 --save-exact"
 else
     echo ""
     echo -e "  ${GREEN}悪性バージョンは検出されませんでした${NC}"

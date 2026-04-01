@@ -6,10 +6,11 @@ param(
     [string]$SearchRoot = $env:USERPROFILE
 )
 
-$Version = "0.1.1"
+$Version = "0.2.0"
 $badVersions = @("1.14.1", "0.30.4")
 $foundCount = 0
 $dangerCount = 0
+$unpinnedCount = 0
 
 Write-Host "========================================"
 Write-Host " axios バージョンチェック v${Version}"
@@ -18,17 +19,41 @@ Write-Host "========================================"
 Write-Host ""
 
 function Test-BadVersion($ver) {
-    return $ver -in $badVersions
+    $bare = $ver -replace '^[^0-9]*', ''
+    return $bare -in $badVersions
+}
+
+function Test-Unpinned($ver) {
+    return $ver -match '^[\^~><]' -or $ver -match '[x*]'
 }
 
 function Show-Result($location, $version, $source, $suffix = "") {
     $script:foundCount++
-    $displayVersion = "${version}${suffix}"
+
+    $pinned = ""
+    if (Test-Unpinned $version) {
+        $script:unpinnedCount++
+        $pinned = "未固定"
+    }
+
+    if ($suffix -and $pinned) {
+        $displayVersion = "${version} (定義のみ・未固定)"
+    } elseif ($suffix) {
+        $displayVersion = "${version}${suffix}"
+    } elseif ($pinned) {
+        $displayVersion = "${version} (未固定)"
+    } else {
+        $displayVersion = $version
+    }
+
     if (Test-BadVersion $version) {
         $script:dangerCount++
         Write-Host "  [危険] " -ForegroundColor Red -NoNewline
         Write-Host "axios@" -NoNewline
         Write-Host "$displayVersion" -ForegroundColor Red
+    } elseif ($pinned) {
+        Write-Host "  [注意] " -ForegroundColor Yellow -NoNewline
+        Write-Host "axios@$displayVersion" -ForegroundColor Yellow
     } else {
         Write-Host "  [安全] " -ForegroundColor Green -NoNewline
         Write-Host "axios@$displayVersion"
@@ -106,6 +131,27 @@ foreach ($lockFile in $lockFiles) {
             $pkg = Get-Content $axiosPkg -Raw | ConvertFrom-Json
             if ($pkg.version) {
                 Show-Result $projectDir $pkg.version "node_modules"
+
+                # node_modules がある場合でも package.json のバージョン固定状況を確認
+                $pkgJson = Join-Path $projectDir "package.json"
+                if (Test-Path $pkgJson) {
+                    $pkgContent = Get-Content $pkgJson -Raw | ConvertFrom-Json
+                    $depSpec = $null
+                    if ($pkgContent.dependencies -and $pkgContent.dependencies.axios) {
+                        $depSpec = $pkgContent.dependencies.axios
+                    }
+                    if (-not $depSpec -and $pkgContent.devDependencies -and $pkgContent.devDependencies.axios) {
+                        $depSpec = $pkgContent.devDependencies.axios
+                    }
+                    if ($depSpec -and (Test-Unpinned $depSpec)) {
+                        $script:unpinnedCount++
+                        Write-Host "  [注意] " -ForegroundColor Yellow -NoNewline
+                        Write-Host "axios@$depSpec (未固定)" -ForegroundColor Yellow
+                        Write-Host "        場所: $projectDir"
+                        Write-Host "        検出: package.json"
+                        Write-Host ""
+                    }
+                }
             }
         } catch {}
         continue
@@ -115,13 +161,13 @@ foreach ($lockFile in $lockFiles) {
     $pkgJson = Join-Path $projectDir "package.json"
     if (Test-Path $pkgJson) {
         try {
-            $pkg = Get-Content $pkgJson -Raw | ConvertFrom-Json
+            $pkgContent = Get-Content $pkgJson -Raw | ConvertFrom-Json
             $depVersion = $null
-            if ($pkg.dependencies -and $pkg.dependencies.axios) {
-                $depVersion = $pkg.dependencies.axios
+            if ($pkgContent.dependencies -and $pkgContent.dependencies.axios) {
+                $depVersion = $pkgContent.dependencies.axios
             }
-            if (-not $depVersion -and $pkg.devDependencies -and $pkg.devDependencies.axios) {
-                $depVersion = $pkg.devDependencies.axios
+            if (-not $depVersion -and $pkgContent.devDependencies -and $pkgContent.devDependencies.axios) {
+                $depVersion = $pkgContent.devDependencies.axios
             }
             if ($depVersion) {
                 Show-Result $projectDir $depVersion "package.json" " (定義のみ)"
@@ -141,6 +187,7 @@ Write-Host ""
 Write-Host "========================================"
 Write-Host "  検索リポジトリ数: $repoCount"
 Write-Host "  axios 検出数:     $foundCount"
+Write-Host "  未固定バージョン: $unpinnedCount 件"
 
 if ($dangerCount -gt 0) {
     Write-Host ""
@@ -149,6 +196,11 @@ if ($dangerCount -gt 0) {
     Write-Host "  悪性バージョン ($($badVersions -join ', ')) が検出されました！" -ForegroundColor Red
     Write-Host "  直ちに安全なバージョンへダウングレードしてください:"
     Write-Host "    npm install axios@1.14.0"
+} elseif ($unpinnedCount -gt 0) {
+    Write-Host ""
+    Write-Host "  未固定のバージョン指定が $unpinnedCount 件あります" -ForegroundColor Yellow
+    Write-Host "  バージョンを固定することを推奨します:"
+    Write-Host "    npm install axios@1.14.0 --save-exact"
 } else {
     Write-Host ""
     Write-Host "  悪性バージョンは検出されませんでした" -ForegroundColor Green
