@@ -6,12 +6,13 @@ param(
     [string]$SearchRoot = $env:USERPROFILE
 )
 
+$Version = "0.1.1"
 $badVersions = @("1.14.1", "0.30.4")
 $foundCount = 0
 $dangerCount = 0
 
 Write-Host "========================================"
-Write-Host " axios バージョンチェック"
+Write-Host " axios バージョンチェック v${Version}"
 Write-Host " 対象: Windows (PowerShell)"
 Write-Host "========================================"
 Write-Host ""
