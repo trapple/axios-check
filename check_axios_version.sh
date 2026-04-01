@@ -11,6 +11,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+VERSION="0.1.1"
 BAD_VERSIONS=("1.14.1" "0.30.4")
 found_count=0
 danger_count=0
@@ -19,7 +20,7 @@ danger_count=0
 search_root="${1:-$HOME}"
 
 echo "========================================"
-echo " axios バージョンチェック"
+echo " axios バージョンチェック v${VERSION}"
 echo " 対象: macOS / Linux"
 echo "========================================"
 echo ""
@@ -61,7 +62,7 @@ echo ""
 if command -v npm &>/dev/null; then
     global_axios=$(npm ls -g axios --depth=0 --json 2>/dev/null || true)
     if echo "$global_axios" | grep -q '"axios"'; then
-        version=$(echo "$global_axios" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+        version=$(echo "$global_axios" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"' || true)
         if [ -n "$version" ]; then
             npm_prefix=$(npm prefix -g 2>/dev/null)
             print_result "$npm_prefix" "$version" "npm global"
@@ -73,7 +74,7 @@ fi
 if command -v yarn &>/dev/null; then
     yarn_global_dir=$(yarn global dir 2>/dev/null || true)
     if [ -n "$yarn_global_dir" ] && [ -f "$yarn_global_dir/node_modules/axios/package.json" ]; then
-        version=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$yarn_global_dir/node_modules/axios/package.json" | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+        version=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$yarn_global_dir/node_modules/axios/package.json" | head -1 | grep -o '"[^"]*"$' | tr -d '"' || true)
         if [ -n "$version" ]; then
             print_result "$yarn_global_dir" "$version" "yarn global"
         fi
@@ -84,7 +85,7 @@ fi
 if command -v pnpm &>/dev/null; then
     pnpm_global_axios=$(pnpm ls -g axios --json 2>/dev/null || true)
     if echo "$pnpm_global_axios" | grep -q '"axios"'; then
-        version=$(echo "$pnpm_global_axios" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+        version=$(echo "$pnpm_global_axios" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | grep -o '"[^"]*"$' | tr -d '"' || true)
         if [ -n "$version" ]; then
             pnpm_root=$(pnpm root -g 2>/dev/null)
             print_result "$pnpm_root" "$version" "pnpm global"

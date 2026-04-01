@@ -11,8 +11,10 @@ NC='\033[0m'
 
 infected=false
 
+VERSION="0.1.1"
+
 echo "========================================"
-echo " axios 感染チェックスクリプト"
+echo " axios 感染チェックスクリプト v${VERSION}"
 echo " 対象: macOS / Linux"
 echo "========================================"
 echo ""
@@ -20,7 +22,7 @@ echo ""
 os_type="$(uname -s)"
 
 # --- 1. バックドアファイルの存在確認 ---
-echo "[1/4] バックドアファイルの確認..."
+echo "[1/5] バックドアファイルの確認..."
 
 if [ "$os_type" = "Darwin" ]; then
     backdoor="/Library/Caches/com.apple.act.mond"
@@ -42,7 +44,7 @@ fi
 
 # --- 2. plain-crypto-js パッケージの確認 ---
 echo ""
-echo "[2/4] plain-crypto-js パッケージの確認..."
+echo "[2a/5] plain-crypto-js パッケージの確認..."
 
 found_plain_crypto=false
 while IFS= read -r -d '' dir; do
@@ -55,13 +57,34 @@ if [ "$found_plain_crypto" = false ]; then
     echo -e "  ${GREEN}[安全] plain-crypto-js は見つかりませんでした${NC}"
 fi
 
+# --- 2b. Lockfile 内の plain-crypto-js 参照確認 ---
+echo ""
+echo "[2b/5] Lockfile 内の plain-crypto-js 参照確認..."
+
+found_lockfile_ref=false
+while IFS= read -r -d '' lockfile; do
+    # node_modules 内のファイルはスキップ
+    case "$lockfile" in
+        */node_modules/*) continue ;;
+    esac
+    if grep -q "plain-crypto-js" "$lockfile" 2>/dev/null; then
+        echo -e "  ${RED}[危険] Lockfile に plain-crypto-js の参照を検出: ${lockfile}${NC}"
+        found_lockfile_ref=true
+        infected=true
+    fi
+done < <(find "$HOME" \( -name "package-lock.json" -o -name "yarn.lock" -o -name "pnpm-lock.yaml" \) -print0 2>/dev/null || true)
+
+if [ "$found_lockfile_ref" = false ]; then
+    echo -e "  ${GREEN}[安全] Lockfile に plain-crypto-js の参照は見つかりませんでした${NC}"
+fi
+
 # --- 3. axios の悪性バージョン確認 ---
 echo ""
-echo "[3/4] axios の悪性バージョン確認..."
+echo "[3/5] axios の悪性バージョン確認..."
 
 found_bad_axios=false
 while IFS= read -r -d '' pkg; do
-    version=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$pkg" 2>/dev/null | head -1 | grep -o '"[^"]*"$' | tr -d '"')
+    version=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$pkg" 2>/dev/null | head -1 | grep -o '"[^"]*"$' | tr -d '"' || true)
     if [ "$version" = "1.14.1" ] || [ "$version" = "0.30.4" ]; then
         echo -e "  ${RED}[危険] 悪性バージョン axios@${version} を検出: ${pkg}${NC}"
         found_bad_axios=true
@@ -75,7 +98,7 @@ fi
 
 # --- 4. C2サーバへの通信確認 ---
 echo ""
-echo "[4/4] C2サーバへの通信確認..."
+echo "[4/5] C2サーバへの通信確認..."
 
 c2_found=false
 c2_indicators=("sfrclak.com" "142.11.206.73")

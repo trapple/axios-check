@@ -1,28 +1,40 @@
 # axios サプライチェーン攻撃 感染チェックスクリプト (Windows / PowerShell)
 # 参考: https://blog.flatt.tech/entry/axios_compromise
 
+$Version = "0.1.1"
 $infected = $false
 
 Write-Host "========================================"
-Write-Host " axios 感染チェックスクリプト"
+Write-Host " axios 感染チェックスクリプト v${Version}"
 Write-Host " 対象: Windows (PowerShell)"
 Write-Host "========================================"
 Write-Host ""
 
 # --- 1. バックドアファイルの存在確認 ---
-Write-Host "[1/4] バックドアファイルの確認..."
+Write-Host "[1/5] バックドアファイルの確認..."
 
-$backdoor = Join-Path $env:PROGRAMDATA "wt.exe"
-if (Test-Path $backdoor) {
-    Write-Host "  [危険] バックドアファイルを検出: $backdoor" -ForegroundColor Red
-    $infected = $true
-} else {
-    Write-Host "  [安全] バックドアファイル ($backdoor) は見つかりませんでした" -ForegroundColor Green
+$backdoorFiles = @(
+    (Join-Path $env:PROGRAMDATA "wt.exe"),
+    (Join-Path $env:TEMP "6202033.vbs"),
+    (Join-Path $env:TEMP "6202033.ps1")
+)
+
+$backdoorFound = $false
+foreach ($backdoor in $backdoorFiles) {
+    if (Test-Path $backdoor) {
+        Write-Host "  [危険] バックドアファイルを検出: $backdoor" -ForegroundColor Red
+        $infected = $true
+        $backdoorFound = $true
+    }
+}
+
+if (-not $backdoorFound) {
+    Write-Host "  [安全] バックドアファイルは見つかりませんでした" -ForegroundColor Green
 }
 
 # --- 2. plain-crypto-js パッケージの確認 ---
 Write-Host ""
-Write-Host "[2/4] plain-crypto-js パッケージの確認..."
+Write-Host "[2a/5] plain-crypto-js パッケージの確認..."
 
 $foundPlainCrypto = $false
 $searchPaths = @($env:USERPROFILE)
@@ -40,9 +52,29 @@ if (-not $foundPlainCrypto) {
     Write-Host "  [安全] plain-crypto-js は見つかりませんでした" -ForegroundColor Green
 }
 
+# --- 2b. Lockfile 内の plain-crypto-js 参照確認 ---
+Write-Host ""
+Write-Host "[2b/5] Lockfile 内の plain-crypto-js 参照確認..."
+
+$foundLockfileRef = $false
+$lockFiles = Get-ChildItem -Path $env:USERPROFILE -Recurse -ErrorAction SilentlyContinue -Include "package-lock.json", "yarn.lock", "pnpm-lock.yaml" |
+    Where-Object { $_.FullName -notmatch '[/\\]node_modules[/\\]' }
+
+foreach ($lockFile in $lockFiles) {
+    if (Select-String -Path $lockFile.FullName -Pattern "plain-crypto-js" -Quiet -ErrorAction SilentlyContinue) {
+        Write-Host "  [危険] Lockfile に plain-crypto-js の参照を検出: $($lockFile.FullName)" -ForegroundColor Red
+        $foundLockfileRef = $true
+        $infected = $true
+    }
+}
+
+if (-not $foundLockfileRef) {
+    Write-Host "  [安全] Lockfile に plain-crypto-js の参照は見つかりませんでした" -ForegroundColor Green
+}
+
 # --- 3. axios の悪性バージョン確認 ---
 Write-Host ""
-Write-Host "[3/4] axios の悪性バージョン確認..."
+Write-Host "[3/5] axios の悪性バージョン確認..."
 
 $foundBadAxios = $false
 $badVersions = @("1.14.1", "0.30.4")
@@ -71,7 +103,7 @@ if (-not $foundBadAxios) {
 
 # --- 4. C2サーバへの通信確認 ---
 Write-Host ""
-Write-Host "[4/4] C2サーバへの通信確認..."
+Write-Host "[4/5] C2サーバへの通信確認..."
 
 $c2Found = $false
 $c2Indicators = @("sfrclak.com", "142.11.206.73")
