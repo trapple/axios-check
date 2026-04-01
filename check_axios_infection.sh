@@ -49,7 +49,7 @@ while IFS= read -r -d '' dir; do
     echo -e "  ${RED}[危険] plain-crypto-js を検出: ${dir}${NC}"
     found_plain_crypto=true
     infected=true
-done < <(find "$HOME" -type d -name "plain-crypto-js" -print0 2>/dev/null || true)
+done < <(find "$HOME" -path "*/node_modules/plain-crypto-js" -type d -print0 2>/dev/null || true)
 
 if [ "$found_plain_crypto" = false ]; then
     echo -e "  ${GREEN}[安全] plain-crypto-js は見つかりませんでした${NC}"
@@ -80,28 +80,27 @@ echo "[4/4] C2サーバへの通信確認..."
 c2_found=false
 c2_indicators=("sfrclak.com" "142.11.206.73")
 
-# DNS キャッシュ確認 (macOS)
-if [ "$os_type" = "Darwin" ]; then
-    for indicator in "${c2_indicators[@]}"; do
+# netstat の結果を一度だけ取得
+netstat_output=$(netstat -an 2>/dev/null || true)
+
+for indicator in "${c2_indicators[@]}"; do
+    # DNS キャッシュ確認 (macOS)
+    if [ "$os_type" = "Darwin" ]; then
         if dscacheutil -cachedump 2>/dev/null | grep -q "$indicator" 2>/dev/null; then
             echo -e "  ${RED}[危険] DNSキャッシュに C2 インジケータを検出: ${indicator}${NC}"
             c2_found=true
             infected=true
         fi
-    done
-fi
+    fi
 
-# ネットワーク接続確認
-for indicator in "${c2_indicators[@]}"; do
-    if netstat -an 2>/dev/null | grep -q "$indicator"; then
+    # ネットワーク接続確認
+    if echo "$netstat_output" | grep -q "$indicator"; then
         echo -e "  ${RED}[危険] アクティブな接続で C2 インジケータを検出: ${indicator}${NC}"
         c2_found=true
         infected=true
     fi
-done
 
-# /etc/hosts 確認
-for indicator in "${c2_indicators[@]}"; do
+    # /etc/hosts 確認
     if grep -q "$indicator" /etc/hosts 2>/dev/null; then
         echo -e "  ${YELLOW}[注意] /etc/hosts に C2 インジケータを検出: ${indicator}${NC}"
         c2_found=true

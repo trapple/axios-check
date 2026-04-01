@@ -49,7 +49,7 @@ $badVersions = @("1.14.1", "0.30.4")
 
 foreach ($searchPath in $searchPaths) {
     $pkgFiles = Get-ChildItem -Path $searchPath -Filter "package.json" -Recurse -ErrorAction SilentlyContinue |
-        Where-Object { $_.DirectoryName -like "*node_modules\axios" }
+        Where-Object { $_.DirectoryName -match '[/\\]node_modules[/\\]axios$' }
 
     foreach ($pkgFile in $pkgFiles) {
         try {
