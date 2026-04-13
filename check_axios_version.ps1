@@ -6,11 +6,14 @@ param(
     [string]$SearchRoot = $env:USERPROFILE
 )
 
-$Version = "0.2.1"
+$Version = "0.3.0"
 $badVersions = @("1.14.1", "0.30.4")
+$SafeVersion = [version]"1.15.0"  # CVE-2026-40175 の修正版
 $foundCount = 0
 $dangerCount = 0
+$vulnerableCount = 0
 $unpinnedCount = 0
+$vulnerableList = New-Object System.Collections.Generic.List[string]
 
 Write-Host "========================================"
 Write-Host " axios バージョンチェック v${Version}"
@@ -25,6 +28,17 @@ function Test-BadVersion($ver) {
 
 function Test-Unpinned($ver) {
     return $ver -match '^[\^~><]' -or $ver -match '[x*]'
+}
+
+# CVE-2026-40175: 1.15.0 未満かどうか判定
+function Test-Vulnerable($ver) {
+    $bare = $ver -replace '^[^0-9]*', '' -replace '-.*$', ''
+    if ($bare -notmatch '^\d+(\.\d+){1,3}$') { return $false }
+    try {
+        return ([version]$bare) -lt $SafeVersion
+    } catch {
+        return $false
+    }
 }
 
 function Show-Result($location, $version, $source, $suffix = "") {
@@ -51,6 +65,14 @@ function Show-Result($location, $version, $source, $suffix = "") {
         Write-Host "  [危険] " -ForegroundColor Red -NoNewline
         Write-Host "axios@" -NoNewline
         Write-Host "$displayVersion" -ForegroundColor Red
+    } elseif (Test-Vulnerable $version) {
+        $script:vulnerableCount++
+        $bare = $version -replace '^[^0-9]*', ''
+        $script:vulnerableList.Add("${location} : axios@${bare}")
+        Write-Host "  [脆弱] " -ForegroundColor Red -NoNewline
+        Write-Host "axios@" -NoNewline
+        Write-Host "$displayVersion" -ForegroundColor Red -NoNewline
+        Write-Host " (CVE-2026-40175)" -ForegroundColor Yellow
     } elseif ($pinned) {
         Write-Host "  [注意] " -ForegroundColor Yellow -NoNewline
         Write-Host "axios@$displayVersion" -ForegroundColor Yellow
@@ -188,6 +210,7 @@ Write-Host "========================================"
 Write-Host "  検索リポジトリ数: $repoCount"
 Write-Host "  axios 検出数:     $foundCount"
 Write-Host "  未固定バージョン: $unpinnedCount 件"
+Write-Host "  脆弱バージョン:   $vulnerableCount 件 (< $SafeVersion)"
 
 if ($dangerCount -gt 0) {
     Write-Host ""
@@ -196,6 +219,19 @@ if ($dangerCount -gt 0) {
     Write-Host "  悪性バージョン ($($badVersions -join ', ')) が検出されました！" -ForegroundColor Red
     Write-Host "  直ちに安全なバージョンへダウングレードしてください:"
     Write-Host "    npm install axios@1.14.0"
+} elseif ($vulnerableCount -gt 0) {
+    Write-Host ""
+    Write-Host "  CVE-2026-40175 の影響を受けるバージョン (< $SafeVersion) が $vulnerableCount 件検出されました" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "  対象:"
+    foreach ($entry in $vulnerableList) {
+        Write-Host "    - $entry"
+    }
+    Write-Host ""
+    Write-Host "  以下のコマンドで $SafeVersion 以上へ更新してください:"
+    Write-Host "    npm update axios" -ForegroundColor Green
+    Write-Host "  （package.json の指定が固定/範囲外で更新されない場合は）"
+    Write-Host "    npm install axios@latest" -ForegroundColor Green
 } elseif ($unpinnedCount -gt 0) {
     Write-Host ""
     Write-Host "  未固定のバージョン指定が $unpinnedCount 件あります" -ForegroundColor Yellow

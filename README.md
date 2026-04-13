@@ -12,8 +12,8 @@
 |---|---|---|
 | `check_axios_infection.sh` | 感染チェック (macOS / Linux) | v0.1.1 |
 | `check_axios_infection.ps1` | 感染チェック (Windows) | v0.1.2 |
-| `check_axios_version.sh` | axios バージョン確認 (macOS / Linux) | v0.2.0 |
-| `check_axios_version.ps1` | axios バージョン確認 (Windows) | v0.2.1 |
+| `check_axios_version.sh` | axios バージョン確認 (macOS / Linux) | v0.3.0 |
+| `check_axios_version.ps1` | axios バージョン確認 (Windows) | v0.3.0 |
 
 ## 1. 感染チェック (`check_axios_infection`)
 
@@ -52,6 +52,7 @@ irm https://raw.githubusercontent.com/trapple/axios-check/main/check_axios_infec
 - **グローバルパッケージ確認** — npm / yarn / pnpm のグローバルインストールをチェック
 - **ローカルリポジトリ自動検索** — ホームディレクトリ配下のプロジェクトを自動検出し、axios のバージョンを確認
 - **悪性バージョン検出** — `1.14.1` / `0.30.4` を `[危険]` として警告
+- **脆弱バージョン検出** — [CVE-2026-40175](https://github.com/advisories/GHSA-fvcv-3m26-pcqx) の影響を受ける `< 1.15.0` を `[脆弱]` として警告し、`npm update axios` を促します
 
 ### 使い方
 

@@ -11,11 +11,14 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-VERSION="0.2.0"
+VERSION="0.3.0"
 BAD_VERSIONS=("1.14.1" "0.30.4")
+SAFE_VERSION="1.15.0"  # CVE-2026-40175 の修正版
 found_count=0
 danger_count=0
+vulnerable_count=0
 unpinned_count=0
+declare -a VULNERABLE_LIST=()
 
 # 検索ルートディレクトリ（引数があればそれを使用、なければ $HOME）
 search_root="${1:-$HOME}"
@@ -34,6 +37,20 @@ is_bad_version() {
         fi
     done
     return 1
+}
+
+# CVE-2026-40175: 1.15.0 未満かどうか判定（bare バージョン文字列を想定）
+is_vulnerable() {
+    local ver="$1"
+    # 数字とドットのみに正規化（サフィックスがあれば除去）
+    ver="${ver%%-*}"
+    case "$ver" in
+        ''|*[!0-9.]*) return 1 ;;
+    esac
+    [ "$ver" = "$SAFE_VERSION" ] && return 1
+    local lowest
+    lowest=$(printf '%s\n%s\n' "$ver" "$SAFE_VERSION" | sort -V | head -1)
+    [ "$lowest" = "$ver" ]
 }
 
 is_unpinned() {
@@ -82,6 +99,10 @@ print_result() {
     if is_bad_version "$bare_version"; then
         danger_count=$((danger_count + 1))
         echo -e "  ${RED}[危険]${NC} axios@${RED}${display_version}${NC}"
+    elif is_vulnerable "$bare_version"; then
+        vulnerable_count=$((vulnerable_count + 1))
+        VULNERABLE_LIST+=("${location} : axios@${bare_version}")
+        echo -e "  ${RED}[脆弱]${NC} axios@${RED}${display_version}${NC} ${YELLOW}(CVE-2026-40175)${NC}"
     elif [ -n "$pinned_warn" ]; then
         echo -e "  ${YELLOW}[注意]${NC} axios@${YELLOW}${display_version}${NC}"
     else
@@ -200,6 +221,7 @@ echo "========================================"
 echo "  検索リポジトリ数: ${repo_count}"
 echo "  axios 検出数:     ${found_count}"
 echo "  未固定バージョン: ${unpinned_count} 件"
+echo "  脆弱バージョン:   ${vulnerable_count} 件 (< ${SAFE_VERSION})"
 
 if [ "$danger_count" -gt 0 ]; then
     echo ""
@@ -208,6 +230,19 @@ if [ "$danger_count" -gt 0 ]; then
     echo -e "  ${RED}悪性バージョン (${BAD_VERSIONS[*]}) が検出されました！${NC}"
     echo "  直ちに安全なバージョンへダウングレードしてください:"
     echo "    npm install axios@1.14.0"
+elif [ "$vulnerable_count" -gt 0 ]; then
+    echo ""
+    echo -e "  ${RED}CVE-2026-40175 の影響を受けるバージョン (< ${SAFE_VERSION}) が ${vulnerable_count} 件検出されました${NC}"
+    echo ""
+    echo "  対象:"
+    for entry in "${VULNERABLE_LIST[@]}"; do
+        echo "    - ${entry}"
+    done
+    echo ""
+    echo "  以下のコマンドで ${SAFE_VERSION} 以上へ更新してください:"
+    echo -e "    ${GREEN}npm update axios${NC}"
+    echo "  （package.json の指定が固定/範囲外で更新されない場合は）"
+    echo -e "    ${GREEN}npm install axios@latest${NC}"
 elif [ "$unpinned_count" -gt 0 ]; then
     echo ""
     echo -e "  ${YELLOW}未固定のバージョン指定が ${unpinned_count} 件あります${NC}"
